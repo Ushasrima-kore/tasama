@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tasama - Upload Document</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #eef2ff, #f8fafc);
+    color: #1e293b;
+  }
+  .card {
+    width: 100%; max-width: 480px; margin: 16px; padding: 36px 32px; text-align: center;
+    background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(30, 41, 59, .1);
+  }
+  h1 { margin: 0 0 6px; font-size: 24px; }
+  .sub { margin: 0 0 24px; color: #64748b; font-size: 14px; }
+  .drop {
+    display: block; padding: 40px 16px; border: 2px dashed #c7d2fe; border-radius: 12px;
+    background: #f5f7ff; cursor: pointer; transition: .2s;
+  }
+  .drop:hover, .drop.over { border-color: #6366f1; background: #eef0ff; }
+  .drop svg { width: 44px; height: 44px; stroke: #6366f1; margin-bottom: 8px; }
+  .drop strong { display: block; font-size: 16px; }
+  .drop span { font-size: 13px; color: #64748b; }
+  .drop.busy { pointer-events: none; opacity: .6; }
+  input[type=file] { display: none; }
+  .status {
+    display: none; margin-top: 22px; padding: 12px 14px; border-radius: 10px;
+    font-size: 14px; align-items: center; justify-content: center; gap: 10px;
+  }
+  .status.show { display: flex; }
+  .status.info { background: #eef2ff; color: #4338ca; }
+  .status.ok { background: #e8f7ee; color: #15803d; }
+  .status.err { background: #fdecec; color: #b91c1c; }
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid currentColor; border-top-color: transparent;
+    border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Upload your document</h1>
+  <p class="sub">Choose a file and we'll take care of the rest.</p>
+
+  <label class="drop" id="drop" for="file">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/>
+    </svg>
+    <strong id="label">Click to upload or drag &amp; drop</strong>
+    <span>Any document</span>
+  </label>
+  <input type="file" id="file">
+
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+const UPLOAD_API_URL = 'https://demo.kore.ai/images/fileupload/agentic-fileupload/index.php';
+const UPLOAD_FILE_FIELD = 'file';
+// The response shape isn't known yet, so try common shapes. Adjust once confirmed.
+const extractUrlFromUploadResponse = (data) => {
+  if (typeof data === 'string') return /^https?:\/\//.test(data.trim()) ? data.trim() : null;
+  const d = data && (data.data || data);
+  return d && (d.url || d.file_url || d.fileUrl || d.link || d.path);
+};
+
+// Goes through server.py, which adds the auth headers and forwards to the workflow API.
+const WORKFLOW_URL = '/api/workflow';
+
+const drop = document.getElementById('drop');
+const input = document.getElementById('file');
+const label = document.getElementById('label');
+const statusEl = document.getElementById('status');
+
+function setStatus(type, text, spinning) {
+  statusEl.className = 'status show ' + type;
+  statusEl.innerHTML = '';
+  if (spinning) statusEl.appendChild(Object.assign(document.createElement('div'), { className: 'spinner' }));
+  statusEl.appendChild(document.createTextNode(text));
+}
+
+async function readBody(res) {
+  const text = await res.text();
+  try { return JSON.parse(text); } catch { return text; }
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  label.textContent = file.name;
+  drop.classList.add('busy');
+  try {
+    setStatus('info', 'Uploading…', true);
+    const form = new FormData();
+    form.append(UPLOAD_FILE_FIELD, file);
+    const upRes = await fetch(UPLOAD_API_URL, { method: 'POST', body: form });
+    const upData = await readBody(upRes);
+    console.log('Upload response', upRes.status, upData);
+    if (!upRes.ok) throw new Error('Upload failed');
+    const fileUrl = extractUrlFromUploadResponse(upData);
+    if (!fileUrl) throw new Error('Upload failed');
+
+    setStatus('info', 'Processing your document…', true);
+    const wfRes = await fetch(WORKFLOW_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input: { file_url: fileUrl } })
+    });
+    const wfData = await readBody(wfRes);
+    console.log('Workflow response', wfRes.status, wfData);
+    if (!wfRes.ok) throw new Error('Processing failed');
+
+    setStatus('ok', 'Done! CV has been uploaded');
+  } catch (err) {
+    console.error(err);
+    setStatus('err', (err.message === 'Failed to fetch' ? 'Network error' : err.message) + '. Please try again.');
+  } finally {
+    drop.classList.remove('busy');
+    input.value = '';
+  }
+}
+
+input.addEventListener('change', () => handleFile(input.files[0]));
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+</script>
+</body>
+</html>
