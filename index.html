@@ -3,39 +3,57 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tasama - Upload Document</title>
+<title>Tasama - Upload CV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --navy: #0a0a5c; --navy-deep: #050538; --blue: #1a1aa6;
+    --gold: #b89b5e; --green: #a8d98a;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #eef2ff, #f8fafc);
-    color: #1e293b;
+    font-family: 'Montserrat', system-ui, 'Segoe UI', sans-serif; color: #fff;
+    background:
+      radial-gradient(ellipse 60% 50% at 70% 0%, rgba(120, 130, 230, .35), transparent 70%),
+      linear-gradient(135deg, var(--navy-deep) 0%, var(--navy) 50%, var(--blue) 100%);
+    position: relative; overflow: hidden;
   }
-  .card {
-    width: 100%; max-width: 480px; margin: 16px; padding: 36px 32px; text-align: center;
-    background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(30, 41, 59, .1);
+  /* decorative wireframe shapes, echoing the Tasama website */
+  .deco { position: absolute; right: -40px; bottom: -20px; width: 640px; max-width: 80vw; opacity: .55; pointer-events: none; }
+  .deco * { fill: none; stroke: var(--green); stroke-width: 1; }
+  .wrap { position: relative; width: 100%; max-width: 520px; margin: 24px 16px; text-align: center; }
+  .logo-card {
+    display: inline-block; background: #fff; padding: 14px 26px; border-radius: 14px;
+    margin-bottom: 28px; box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
   }
-  h1 { margin: 0 0 6px; font-size: 24px; }
-  .sub { margin: 0 0 24px; color: #64748b; font-size: 14px; }
+  .logo-card img { display: block; height: 64px; }
+  h1 { margin: 0 0 8px; font-size: 32px; font-weight: 500; line-height: 1.2; }
+  h1 span { color: var(--gold); font-weight: 600; }
+  .sub { margin: 0 0 28px; color: rgba(255, 255, 255, .8); font-size: 15px; }
   .drop {
-    display: block; padding: 40px 16px; border: 2px dashed #c7d2fe; border-radius: 12px;
-    background: #f5f7ff; cursor: pointer; transition: .2s;
+    display: block; padding: 42px 16px; border: 2px dashed rgba(168, 217, 138, .6); border-radius: 16px;
+    background: rgba(255, 255, 255, .06); backdrop-filter: blur(6px); cursor: pointer; transition: .2s;
   }
-  .drop:hover, .drop.over { border-color: #6366f1; background: #eef0ff; }
-  .drop svg { width: 44px; height: 44px; stroke: #6366f1; margin-bottom: 8px; }
-  .drop strong { display: block; font-size: 16px; }
-  .drop span { font-size: 13px; color: #64748b; }
+  .drop:hover, .drop.over { border-color: var(--green); background: rgba(255, 255, 255, .12); transform: translateY(-2px); }
+  .drop .icon {
+    width: 56px; height: 56px; margin: 0 auto 12px; border-radius: 50%; background: var(--green);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .drop svg { width: 26px; height: 26px; stroke: var(--navy); }
+  .drop strong { display: block; font-size: 17px; font-weight: 600; word-break: break-word; }
+  .drop span { display: block; margin-top: 4px; font-size: 13px; color: rgba(255, 255, 255, .65); }
   .drop.busy { pointer-events: none; opacity: .6; }
   input[type=file] { display: none; }
   .status {
-    display: none; margin-top: 22px; padding: 12px 14px; border-radius: 10px;
-    font-size: 14px; align-items: center; justify-content: center; gap: 10px;
+    display: none; margin-top: 22px; padding: 14px 16px; border-radius: 999px;
+    font-size: 14px; font-weight: 500; align-items: center; justify-content: center; gap: 10px;
   }
   .status.show { display: flex; }
-  .status.info { background: #eef2ff; color: #4338ca; }
-  .status.ok { background: #e8f7ee; color: #15803d; }
-  .status.err { background: #fdecec; color: #b91c1c; }
+  .status.info { background: rgba(255, 255, 255, .14); color: #fff; }
+  .status.ok { background: var(--green); color: var(--navy-deep); }
+  .status.err { background: #fde2e2; color: #b91c1c; }
   .spinner {
     width: 16px; height: 16px; border: 2px solid currentColor; border-top-color: transparent;
     border-radius: 50%; animation: spin .8s linear infinite;
@@ -44,21 +62,31 @@
 </style>
 </head>
 <body>
-<div class="card">
-  <h1>Upload your document</h1>
-  <p class="sub">Choose a file and we'll take care of the rest.</p>
+<svg class="deco" viewBox="0 0 640 400" aria-hidden="true">
+  <path d="M20 120 L330 70 L330 250 L20 300 Z"/><path d="M330 70 L440 130 L440 310 L330 250"/><path d="M20 120 L130 180 L440 130"/>
+  <path d="M130 180 L130 360 L20 300"/><path d="M130 360 L440 310"/>
+  <path d="M300 420 Q420 150 760 90"/><path d="M400 420 Q500 190 760 150"/>
+</svg>
+
+<div class="wrap">
+  <div class="logo-card"><img src="/assets/logo.png" alt="Tasama Business Services"></div>
+  <h1>Please upload <span>your CV</span></h1>
+  <p class="sub">Choose your CV and we'll take care of the rest.</p>
 
   <label class="drop" id="drop" for="file">
-    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/>
-    </svg>
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/>
+      </svg>
+    </div>
     <strong id="label">Click to upload or drag &amp; drop</strong>
-    <span>Any document</span>
+    <span>Your CV (PDF or Word)</span>
   </label>
   <input type="file" id="file">
 
   <div class="status" id="status"></div>
 </div>
+
 
 <script>
 const UPLOAD_API_URL = 'https://demo.kore.ai/images/fileupload/agentic-fileupload/index.php';
@@ -70,7 +98,7 @@ const extractUrlFromUploadResponse = (data) => {
   return d && (d.url || d.file_url || d.fileUrl || d.link || d.path);
 };
 
-// Goes through server.py, which adds the auth headers and forwards to the workflow API.
+// Goes through server.js, which adds the auth headers and forwards to the workflow API.
 const WORKFLOW_URL = '/api/workflow';
 
 const drop = document.getElementById('drop');
@@ -105,7 +133,7 @@ async function handleFile(file) {
     const fileUrl = extractUrlFromUploadResponse(upData);
     if (!fileUrl) throw new Error('Upload failed');
 
-    setStatus('info', 'Processing your document…', true);
+    setStatus('info', 'Processing your CV…', true);
     const wfRes = await fetch(WORKFLOW_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
